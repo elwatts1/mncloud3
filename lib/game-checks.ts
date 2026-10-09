@@ -30,12 +30,20 @@ export function nbaExplanation(event:any,plays:any[]){
 }
 export async function nbaStatus(now:Date){
  const date=day(now);
- if(date<'2026-10-21')return {status:'COMING SOON',message:'Coming soon! 🏀 The regular season starts October 21.',availabilityUnconfirmed:false};
+ if(date<'2026-10-21')return {status:'COMING SOON',message:'Coming soon! 🏀 The regular season starts October 21.',availabilityUnconfirmed:false,gameCheck:{label:'Game check',detail:'Preseason games don’t qualify for this deal.'}};
  if(date>'2027-06-30')return {status:'NOT ACTIVE',message:'This promotion ended June 30.',availabilityUnconfirmed:false};
  let status='NOT ACTIVE',uncertain=false,message='The Timberwolves didn’t play yesterday.';
+ let gameCheck:{label:string;detail:string}|undefined;
  const dates:string[]=[],reasons:{date:string;message:string}[]=[];
  try{
   const events=(await scoreboard('basketball','nba',now,1)).filter((e:any)=>[0,1].includes(ageDays(e.date,now))&&e.competitions?.[0]?.competitors?.some((c:any)=>String(c.team?.id)==='16'));
+  const latest=events.filter((e:any)=>(e.status?.type||e.competitions?.[0]?.status?.type)?.state!=='pre').sort((a:any,b:any)=>Date.parse(b.date)-Date.parse(a.date))[0];
+  if(latest){
+   const opponent=latest.competitions[0].competitors.find((c:any)=>String(c.team?.id)!=='16');
+   const name=opponent?.team?.displayName||opponent?.team?.name||'opponent';
+   const gameDate=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',month:'long',day:'numeric',year:'numeric'}).format(new Date(latest.date));
+   gameCheck={label:'Latest game',detail:`Timberwolves ${isHome(latest,'16')?'vs.':'at'} ${name} · ${gameDate} · ${isHome(latest,'16')?'Home':'Away'} · ${isFinal(latest)?'Final':'In progress'}`};
+  }else gameCheck={label:'Game check',detail:'No Timberwolves game yesterday or underway today.'};
   for(const e of events){
    const state=e.status?.type||e.competitions[0].status?.type;
    if(state?.state==='pre')continue;
@@ -64,7 +72,7 @@ export async function nbaStatus(now:Date){
  if(status==='ACTIVE'&&val('weekday')==='Sun'){status='NOT ACTIVE';uncertain=true;message='Sunday redemption isn’t confirmed.';}
  else if(status==='ACTIVE'&&mins>=1260){status='NOT ACTIVE';message='Today’s deal ended at 9 p.m.';}
  else if(status==='ACTIVE'&&mins>=630)message='Two misses, free chicken! 🎉 Already claimed? Redeem by 9 p.m.';
- return {status,message,availabilityUnconfirmed:uncertain&&status==='NOT ACTIVE'};
+ return {status,message,availabilityUnconfirmed:uncertain&&status==='NOT ACTIVE',gameCheck};
 }
 export function footballExplanation(id:string,event:any,now:Date){
  const team=id==='wings'||id==='vcoffee'?'Vikings':'Gophers';

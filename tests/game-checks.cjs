@@ -39,6 +39,10 @@ assert.match(footballExplanation('curds',{date:now.toISOString(),status:{type:{c
   assert.equal(new Set(requested).size,4);
   mock([],[]);assert.match((await nbaStatus(checkNow)).message,/didn’t play yesterday/);
   mock([final],[ft(1),ft(2)]);let result=await nbaStatus(checkNow);assert.equal(result.status,'ACTIVE');assert.equal(result.message,'Two misses, free chicken! 🎉');
+  assert.match(result.gameCheck.detail,/October 22, 2026.*Home.*Final/); // Date must be Central, not UTC.
+  const namedAway={...final,competitions:[{competitors:[{team:{id:'16'},homeAway:'away'},{team:{id:'20',displayName:'Denver Nuggets'},homeAway:'home'}]}]};
+  mock([namedAway],[ft(1),ft(2)]);result=await nbaStatus(checkNow);assert.match(result.gameCheck.detail,/Timberwolves at Denver Nuggets.*Away.*Final/);
+  mock([final,{...final,id:'scheduled',date:'2026-10-23T23:00:00Z',status:{type:{state:'pre'}}}],[ft(1),ft(2)]);result=await nbaStatus(checkNow);assert.match(result.gameCheck.detail,/October 22, 2026/);
   result=await nbaStatus(new Date('2026-10-23T16:00:00Z'));assert.match(result.message,/Already claimed/);
   result=await nbaStatus(new Date('2026-10-24T02:00:00Z'));assert.equal(result.status,'NOT ACTIVE');assert.match(result.message,/ended at 9 p.m/);
   mock([{...final,date:'2026-10-23T13:00:00Z'}],[ft(1),ft(2)]);result=await nbaStatus(checkNow);assert.equal(result.status,'ACTIVE TOMORROW');assert.match(result.message,/tomorrow/);
