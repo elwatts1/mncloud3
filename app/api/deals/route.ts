@@ -1,0 +1,3 @@
+import {offers} from '../../../lib/offers';
+import {nbaStatus,footballStatuses} from '../../../lib/game-checks';
+export async function GET(){const now=new Date();const [nba,football]=await Promise.all([nbaStatus(now),footballStatuses(now)]);const deals=offers.map(o=>({...o,reviewed:o.reviewed||'September 30, 2026',status:'NOT ACTIVE',message:o.pending?'Current-season terms need confirmation.':o.note||'Check the sponsor for coupon availability.',availabilityUnconfirmed:!!(o.pending||o.manual),...(o.id==='bricken'?nba:football[o.id]||{})}));return Response.json({checkedAt:now.toISOString(),deals,flagship:deals[0]},{headers:{'Cache-Control':'public, max-age=60'}});}
