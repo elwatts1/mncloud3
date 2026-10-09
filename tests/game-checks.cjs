@@ -20,7 +20,7 @@ assert.equal(stat({boxscore:{players:[{team:{id:'16'},statistics:[{name:'defensi
 assert.equal(stat({},'16','defensive','SACKS'),null);
 assert.equal(thirdQuarterPoints({competitions:[{competitors:[{team:{id:'135'},linescores:[{value:0},{value:7},{value:3}]}]}]},'135'),3);
 console.log('Minnesota rules passed: same-trip fourth-quarter misses, home/away, preseason, Central dates, expiry, defense totals and quarter scoring.');
-const {nbaStatus,nbaExplanation,footballStatuses,footballExplanation}=require('../.sites-runtime/test/game-checks.js');
+const {nbaStatus,nbaExplanation,footballStatuses,footballExplanation,scoreboard}=require('../.sites-runtime/test/game-checks.js');
 const away={...event,competitions:[{competitors:[{team:{id:'16'},homeAway:'away'},{team:{id:'20'},homeAway:'home'}]}]};
 assert.match(nbaExplanation(away,[ft(1),ft(2)]),/away game/);
 assert.match(nbaExplanation({...event,status:{type:{completed:true}}},[ft(1,3),ft(2,3)]),/before the fourth quarter/);
@@ -33,6 +33,10 @@ assert.match(footballExplanation('curds',{date:now.toISOString(),status:{type:{c
  const final={...event,id:'game',date:'2026-10-23T02:00:00Z',status:{type:{completed:true,state:'post'}}};
  function mock(events,plays){global.fetch=async url=>({ok:true,json:async()=>String(url).includes('/summary?')?{plays}:{events}});}
  try{
+  const requested=[];
+  global.fetch=async url=>{const date=new URL(url).searchParams.get('dates');assert.match(date,/^\d{8}$/);requested.push(date);return {ok:true,json:async()=>({events:[{id:'shared'}]})};};
+  assert.equal((await scoreboard('football','nfl',checkNow)).length,1);
+  assert.equal(new Set(requested).size,4);
   mock([],[]);assert.match((await nbaStatus(checkNow)).message,/didn’t play yesterday/);
   mock([final],[ft(1),ft(2)]);let result=await nbaStatus(checkNow);assert.equal(result.status,'ACTIVE');assert.equal(result.message,'Two misses, free chicken! 🎉');
   result=await nbaStatus(new Date('2026-10-23T16:00:00Z'));assert.match(result.message,/Already claimed/);

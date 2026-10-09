@@ -9,7 +9,15 @@ export function stat(summary:any,team:string,category:string,label:string):numbe
 export function thirdQuarterPoints(event:any,team:string):number|null{const c=event.competitions?.[0]?.competitors?.find((c:any)=>String(c.team?.id)===team);const line=c?.linescores?.find((l:any)=>Number(l.period)===3)||c?.linescores?.[2];return line&&Number.isFinite(Number(line.value))?Number(line.value):null;}
 export function qualifiedNBA(event:any,plays:any[],team='16'){if(!isHome(event,team)||!isRegular(event))return [];const opponent=event.competitions[0].competitors.find((c:any)=>String(c.team?.id)!==team);return opponent?qualifyingPairs(plays,String(opponent.team.id)):[];}
 export function windowStatus(dates:string[],now:Date,days:number){const ages=dates.map(d=>ageDays(d,now));return ages.some(a=>a>=1&&a<=days)?'ACTIVE':ages.includes(0)?'ACTIVE TOMORROW':'NOT ACTIVE';}
-export async function scoreboard(sport:string,league:string,now:Date,back=3){const start=day(new Date(now.getTime()-back*86400000)).replaceAll('-',''),end=day(now).replaceAll('-','');const data=await json(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?dates=${start}-${end}&limit=1000${league==='college-football'?'&groups=80':''}`);if(!Array.isArray(data.events))throw Error('Incomplete schedule');return data.events;}
+export async function scoreboard(sport:string,league:string,now:Date,back=3){
+ // ESPN rejects date ranges for these feeds. Fetch each Central calendar day.
+ const dates=[...new Set(Array.from({length:back+1},(_,i)=>day(new Date(now.getTime()-i*86400000)).replaceAll('-','')))];
+ const feeds=await Promise.all(dates.map(date=>json(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?dates=${date}&limit=1000${league==='college-football'?'&groups=80':''}`)));
+ if(feeds.some(data=>!Array.isArray(data.events)))throw Error('Incomplete schedule');
+ const events=new Map<string,any>();
+ for(const data of feeds)for(const event of data.events)events.set(String(event.id),event);
+ return [...events.values()];
+}
 export function nbaExplanation(event:any,plays:any[]){
  const opponent=event.competitions?.[0]?.competitors?.find((c:any)=>String(c.team?.id)!=='16');
  if(!isRegular(event))return 'Preseason games don’t count for this deal.';
