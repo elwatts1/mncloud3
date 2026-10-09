@@ -1,0 +1,9 @@
+MN Food Wins — Cloudflare-ready v3
+
+This version preserves the approved site UI/content and removes the unused Tailwind/PostCSS entrypoint that caused Cloudflare's ENOENT /tailwindcss build failure.
+
+Cloudflare build command:
+pnpm run build
+
+Cloudflare deploy command:
+npx wrangler deploy --config dist/server/wrangler.json
