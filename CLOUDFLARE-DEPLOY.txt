@@ -1,9 +1,12 @@
-MN Food Wins — Cloudflare-ready v3
+MN Food Wins — Cloudflare deployment
 
-This version preserves the approved site UI/content and removes the unused Tailwind/PostCSS entrypoint that caused Cloudflare's ENOENT /tailwindcss build failure.
-
-Cloudflare build command:
+Build command:
 pnpm run build
 
-Cloudflare deploy command:
-npx wrangler deploy --config dist/server/wrangler.json
+Deploy command:
+npx wrangler deploy
+
+wrangler.jsonc sets the mncloud3v2 Worker entrypoint and its assets binding.
+The Cloudflare Vite plugin generates .wrangler/deploy/config.json so the
+existing deploy command selects the built server automatically.
+Do not deploy dist/client alone: it contains assets, not the page/API server.
