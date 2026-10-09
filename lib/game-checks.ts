@@ -10,16 +10,93 @@ export function thirdQuarterPoints(event:any,team:string):number|null{const c=ev
 export function qualifiedNBA(event:any,plays:any[],team='16'){if(!isHome(event,team)||!isRegular(event))return [];const opponent=event.competitions[0].competitors.find((c:any)=>String(c.team?.id)!==team);return opponent?qualifyingPairs(plays,String(opponent.team.id)):[];}
 export function windowStatus(dates:string[],now:Date,days:number){const ages=dates.map(d=>ageDays(d,now));return ages.some(a=>a>=1&&a<=days)?'ACTIVE':ages.includes(0)?'ACTIVE TOMORROW':'NOT ACTIVE';}
 export async function scoreboard(sport:string,league:string,now:Date,back=3){const start=day(new Date(now.getTime()-back*86400000)).replaceAll('-',''),end=day(now).replaceAll('-','');const data=await json(`https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard?dates=${start}-${end}&limit=1000${league==='college-football'?'&groups=80':''}`);if(!Array.isArray(data.events))throw Error('Incomplete schedule');return data.events;}
-export async function nbaStatus(now:Date){const date=day(now);if(date<'2026-10-21')return {status:'COMING SOON',message:'Coming soon! 🏀 The Timberwolves regular season tips off October 21. Check back here at MN Food Wins for the 2026–27 Chick-fil-A promotion, deal trigger, and how to claim it.',availabilityUnconfirmed:false};let status='NOT ACTIVE',uncertain=false,message='No qualifying fourth-quarter misses in a Timberwolves home game today or yesterday.',dates:string[]=[];try{const events=(await scoreboard('basketball','nba',now,1)).filter((e:any)=>isHome(e,'16')&&[0,1].includes(ageDays(e.date,now)));for(const e of events){if(!isRegular(e))continue;const state=e.status?.type||e.competitions[0].status?.type;if(state?.state==='pre')continue;try{const s=await json('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event='+e.id);if(!Array.isArray(s.plays)||!s.plays.length||isFinal(e)&&!s.plays.some((p:any)=>Number(p.period?.number)===4)){uncertain=true;continue;}if(qualifiedNBA(e,s.plays).length)dates.push(e.date);}catch{uncertain=true;}}
-status=windowStatus(dates,now,1);if(status==='ACTIVE')message='Qualifying fourth-quarter missed pair detected yesterday. Check the Chick-fil-A app for the reward.';else if(status==='ACTIVE TOMORROW')message='Qualifying fourth-quarter missed pair detected today. Claim by 10:30 a.m. tomorrow, Central time.';else if(uncertain)message='Game data is incomplete or unavailable. Check the sponsor app.';
-}catch{uncertain=true;message='Game data is unavailable. Check the sponsor app.';}
-const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'}).formatToParts(now);const val=(t:string)=>parts.find(p=>p.type===t)?.value;const mins=Number(val('hour'))*60+Number(val('minute'));
-if(date>'2027-06-30'){status='NOT ACTIVE';message='Published promotion ended June 30, 2027.';}
-if(status==='ACTIVE'&&val('weekday')==='Sun'){status='NOT ACTIVE';uncertain=true;message='Sunday redemption handling is not confirmed. Check the reward’s exact expiration in the app.';}else if(status==='ACTIVE'&&mins>=1260){status='NOT ACTIVE';message='The published 9 p.m. redemption window has ended.';}else if(status==='ACTIVE'&&mins>=630){message='The 10:30 a.m. claim deadline has passed. Already claimed? Redeem by 9 p.m. today, Central time.';}
-return {status,message,availabilityUnconfirmed:uncertain&&status==='NOT ACTIVE'};
+export function nbaExplanation(event:any,plays:any[]){
+ const opponent=event.competitions?.[0]?.competitors?.find((c:any)=>String(c.team?.id)!=='16');
+ if(!isRegular(event))return 'Preseason games don’t count for this deal.';
+ if(!opponent)return 'Game data is incomplete.';
+ const id=String(opponent.team.id);
+ if(!isHome(event,'16'))return qualifyingPairs(plays,id,[1,2,3,4,5,6,7,8]).length?'The missed free throws happened in an away game.':'The Timberwolves played away. This deal needs a home game.';
+ if(qualifyingPairs(plays,id,[1,2,3]).length)return 'The missed free throws happened before the fourth quarter.';
+ if(qualifyingPairs(plays,id,[5,6,7,8]).length)return 'The missed free throws happened in overtime.';
+ return isFinal(event)?'The opposing team didn’t miss two fourth-quarter free throws in a row.':'No qualifying misses yet. The game is still underway.';
 }
-export async function footballStatuses(now:Date){const out:Record<string,any>={};for(const [league,team,ids] of [['nfl','16',['wings','vcoffee']],['college-football','135',['gcoffee','curds']]] as const){try{const events=(await scoreboard('football',league,now)).filter((e:any)=>isFinal(e)&&isRegular(e)&&e.competitions?.[0]?.competitors?.some((c:any)=>String(c.team?.id)===team));const dates:Record<string,string[]>={};ids.forEach(id=>dates[id]=[]);let uncertain=false;for(const e of events){if(league==='nfl'){try{const s=await json(`https://site.api.espn.com/apis/site/v2/sports/football/${league}/summary?event=${e.id}`);const sacks=stat(s,team,'defensive','SACKS'),ints=stat(s,team,'interceptions','INT');if(sacks===null||ints===null)uncertain=true;if(sacks!==null&&sacks>=2)dates.wings.push(e.date);if(ints!==null&&ints>=1)dates.vcoffee.push(e.date);}catch{uncertain=true;}}
-else{if(won(e,team))dates.gcoffee.push(e.date);if(isHome(e,team)){const q=thirdQuarterPoints(e,team);if(q===null)uncertain=true;else if(q>0)dates.curds.push(e.date);}}}
-for(const id of ids){const status=windowStatus(dates[id],now,id==='wings'?3:id==='curds'?2:1);out[id]={status,availabilityUnconfirmed:status==='NOT ACTIVE'&&uncertain,message:status==='ACTIVE'?'A qualifying completed game falls within the published offer window. Confirm the coupon and exact expiration with the sponsor.':status==='ACTIVE TOMORROW'?'Today’s completed game qualified. The offer is expected tomorrow.':uncertain?'Game data is incomplete. Check the sponsor app.':'No qualifying completed game found in the current offer window.'};}}
-catch{for(const id of ids)out[id]={status:'NOT ACTIVE',availabilityUnconfirmed:true,message:'Game data is unavailable. Check the sponsor app.'};}}
-return out;}
+export async function nbaStatus(now:Date){
+ const date=day(now);
+ if(date<'2026-10-21')return {status:'COMING SOON',message:'Coming soon! 🏀 The regular season starts October 21.',availabilityUnconfirmed:false};
+ if(date>'2027-06-30')return {status:'NOT ACTIVE',message:'This promotion ended June 30.',availabilityUnconfirmed:false};
+ let status='NOT ACTIVE',uncertain=false,message='The Timberwolves didn’t play yesterday.';
+ const dates:string[]=[],reasons:{date:string;message:string}[]=[];
+ try{
+  const events=(await scoreboard('basketball','nba',now,1)).filter((e:any)=>[0,1].includes(ageDays(e.date,now))&&e.competitions?.[0]?.competitors?.some((c:any)=>String(c.team?.id)==='16'));
+  for(const e of events){
+   const state=e.status?.type||e.competitions[0].status?.type;
+   if(state?.state==='pre')continue;
+   if(!isRegular(e)){reasons.push({date:e.date,message:'Preseason games don’t count for this deal.'});continue;}
+   try{
+    const s=await json('https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event='+e.id);
+    if(!Array.isArray(s.plays)||!s.plays.length||isFinal(e)&&!s.plays.some((p:any)=>Number(p.period?.number)===4)){
+     // Away games cannot activate the deal, even if their play-by-play is missing.
+     if(!isHome(e,'16'))reasons.push({date:e.date,message:'The Timberwolves played away. This deal needs a home game.'});
+     else uncertain=true;
+     continue;
+    }
+    if(qualifiedNBA(e,s.plays).length)dates.push(e.date);
+    else reasons.push({date:e.date,message:nbaExplanation(e,s.plays)});
+   }catch{if(isHome(e,'16'))uncertain=true;else reasons.push({date:e.date,message:'The Timberwolves played away. This deal needs a home game.'});}
+  }
+  status=windowStatus(dates,now,1);
+  if(status==='ACTIVE')message='Two misses, free chicken! 🎉';
+  else if(status==='ACTIVE TOMORROW')message='Two misses! Free chicken tomorrow! 🎉';
+  else if(uncertain)message='Game data is incomplete. Checking again soon.';
+  else message=reasons.sort((a,b)=>Date.parse(b.date)-Date.parse(a.date))[0]?.message||message;
+ }catch{uncertain=true;message='Game data is unavailable. Checking again soon.';}
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'}).formatToParts(now);
+ const val=(t:string)=>parts.find(p=>p.type===t)?.value;
+ const mins=Number(val('hour'))*60+Number(val('minute'));
+ if(status==='ACTIVE'&&val('weekday')==='Sun'){status='NOT ACTIVE';uncertain=true;message='Sunday redemption isn’t confirmed.';}
+ else if(status==='ACTIVE'&&mins>=1260){status='NOT ACTIVE';message='Today’s deal ended at 9 p.m.';}
+ else if(status==='ACTIVE'&&mins>=630)message='Two misses, free chicken! 🎉 Already claimed? Redeem by 9 p.m.';
+ return {status,message,availabilityUnconfirmed:uncertain&&status==='NOT ACTIVE'};
+}
+export function footballExplanation(id:string,event:any,now:Date){
+ const team=id==='wings'||id==='vcoffee'?'Vikings':'Gophers';
+ if(!event)return `The ${team} didn’t play yesterday.`;
+ if(!isFinal(event))return `The ${team} game hasn’t finished yet.`;
+ if(ageDays(event.date,now)>(id==='wings'?3:id==='curds'?2:1))return 'The last offer window has ended.';
+ if(id==='gcoffee')return 'The Gophers didn’t win.';
+ if(id==='vcoffee')return 'The Vikings didn’t make an interception.';
+ if(id==='wings')return 'The Vikings didn’t record two sacks.';
+ return isHome(event,'135')?'The Gophers didn’t score in the third quarter.':'The Gophers played away. This deal needs a home game.';
+}
+export async function footballStatuses(now:Date){
+ const out:Record<string,any>={};
+ const cheers:Record<string,string>={wings:'Two sacks, wings unlocked! 🎉',vcoffee:'An interception means BOGO drinks! ☕🎉',gcoffee:'Gophers win, BOGO drinks! ☕🎉',curds:'Third-quarter points, cheese curds unlocked! 🎉'};
+ const tomorrow:Record<string,string>={wings:'Two sacks! Wings tomorrow! 🎉',vcoffee:'An interception! BOGO drinks tomorrow! ☕🎉',gcoffee:'Gophers win! BOGO drinks tomorrow! ☕🎉',curds:'Third-quarter points! Cheese curds tomorrow! 🎉'};
+ for(const [league,team,ids] of [['nfl','16',['wings','vcoffee']],['college-football','135',['gcoffee','curds']]] as const){
+  try{
+   const teamEvents=(await scoreboard('football',league,now)).filter((e:any)=>isRegular(e)&&e.competitions?.[0]?.competitors?.some((c:any)=>String(c.team?.id)===team)).sort((a:any,b:any)=>Date.parse(b.date)-Date.parse(a.date));
+   const events=teamEvents.filter((e:any)=>isFinal(e));
+   const dates:Record<string,string[]>={},uncertain:Record<string,boolean>={};
+   ids.forEach(id=>{dates[id]=[];uncertain[id]=false;});
+   for(const e of events){
+    if(league==='nfl'){
+     try{
+      const s=await json(`https://site.api.espn.com/apis/site/v2/sports/football/${league}/summary?event=${e.id}`);
+      const sacks=stat(s,team,'defensive','SACKS'),ints=stat(s,team,'interceptions','INT');
+      if(sacks===null)uncertain.wings=true;else if(sacks>=2)dates.wings.push(e.date);
+      if(ints===null)uncertain.vcoffee=true;else if(ints>=1)dates.vcoffee.push(e.date);
+     }catch{uncertain.wings=true;uncertain.vcoffee=true;}
+    }else{
+     if(won(e,team))dates.gcoffee.push(e.date);
+     if(isHome(e,team)){const q=thirdQuarterPoints(e,team);if(q===null)uncertain.curds=true;else if(q>0)dates.curds.push(e.date);}
+    }
+   }
+   for(const id of ids){
+    const status=windowStatus(dates[id],now,id==='wings'?3:id==='curds'?2:1);
+    const latest=teamEvents.find((e:any)=>(e.status?.type||e.competitions?.[0]?.status?.type)?.state!=='pre');
+    out[id]={status,availabilityUnconfirmed:status==='NOT ACTIVE'&&uncertain[id],message:status==='ACTIVE'?cheers[id]:status==='ACTIVE TOMORROW'?tomorrow[id]:uncertain[id]?'Game data is incomplete. Checking again soon.':footballExplanation(id,latest,now)};
+   }
+  }catch{for(const id of ids)out[id]={status:'NOT ACTIVE',availabilityUnconfirmed:true,message:'Game data is unavailable. Checking again soon.'};}
+ }
+ return out;
+}

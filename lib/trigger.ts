@@ -2,7 +2,7 @@ export type QualifyingPair={player:string;period:number;clock:string;playIds:str
 
 // One activation is a non-overlapping pair from the SAME free-throw trip.
 // Minnesota published trigger: fourth quarter only. Overtime eligibility is unconfirmed.
-export function qualifyingPairs(plays:any[], opponent:string):QualifyingPair[] {
+export function qualifyingPairs(plays:any[], opponent:string, periods:number[]=[4]):QualifyingPair[] {
  const pairs:QualifyingPair[]=[];
  const seen=new Set<string>();
  let previous:{player:string;name:string;period:number;clock:string;n:number;total:number;id:string}|null=null;
@@ -22,7 +22,7 @@ export function qualifyingPairs(plays:any[], opponent:string):QualifyingPair[] {
   const period=Number(p.period?.number),n=Number(m[3]),total=Number(m[4]);
   const clock=String(p.clock?.displayValue||'');
   const player=String(p.participants?.[0]?.athlete?.id||m[1].trim());
-  const valid=m[2].toLowerCase()==='misses'&&Number.isInteger(period)&&period===4&&String(p.team?.id)===opponent&&!!clock&&n>=1&&n<=total&&[2,3].includes(total);
+  const valid=m[2].toLowerCase()==='misses'&&Number.isInteger(period)&&periods.includes(period)&&String(p.team?.id)===opponent&&!!clock&&n>=1&&n<=total&&[2,3].includes(total);
   if(!valid){previous=null;continue;}
   if(previous&&previous.player===player&&previous.period===period&&previous.clock===clock&&previous.total===total&&previous.n+1===n){
    pairs.push({player:m[1].trim(),period,clock,playIds:[previous.id,id]});
