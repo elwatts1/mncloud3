@@ -33,10 +33,10 @@ export default async function Guide(){
     <details><summary>Why might the reward be missing?</summary><p>Check that you are signed in, in the eligible market, and have location services enabled. If the reward still does not appear, check the official offer and ask Chick-fil-A support. Our tracker detects game events; it cannot see your account or guarantee reward availability.</p></details>
     <details><summary>Do Sunday or overtime count?</summary><p>The supplied terms do not explain Sunday handling or overtime eligibility. Do not assume a Saturday-night trigger can be redeemed on Sunday or that overtime counts. Follow the app’s actual reward and expiration. Our fourth-quarter tracker does not count overtime until eligibility is confirmed.</p></details>
    </div>
-   <h2>What the labels mean</h2>
-   <p><strong>Active:</strong> before 10:30 a.m., claim your reward for today. From 10:30 a.m. to 9 p.m., only already-claimed rewards can be redeemed; new claims are closed. Individual eligibility is determined by the app.</p>
-   <p><strong>Active tomorrow:</strong> today’s game produced a qualifying trigger. Open the app and claim before 10:30 a.m. tomorrow; redeem tomorrow from 10:30 a.m. to 9 p.m.</p>
-   <p><strong>Not active:</strong> no qualifying trigger was found, the window ended, or availability could not be confirmed. Read any confirmation note.</p>
+   <h2>When can I claim and redeem?</h2>
+   <p><strong>Claim:</strong> open the Chick-fil-A app and claim before 10:30 a.m. the morning after a qualifying home game.</p>
+   <p><strong>Redeem:</strong> use your already-claimed sandwich that same day between 10:30 a.m. and 9 p.m. Central. New claims are closed once the claim deadline passes.</p>
+   <p>If today’s game triggers the offer, the redemption window is tomorrow. Individual eligibility is determined by the app.</p>
    <h2>Sources</h2>
    <p><a href="https://www.nba.com/timberwolves/cfa">Official Timberwolves promotion</a> · <a href="https://www.chick-fil-a.com/customer-support/events-and-promotions">Chick-fil-A promotion support</a></p>
    <p>Timing and reward details updated October 27, 2026 from the current terms supplied by the site owner. The official promotion and your app reward determine eligibility.</p>
