@@ -38,7 +38,16 @@ assert.match(footballExplanation('curds',{date:now.toISOString(),status:{type:{c
   assert.equal((await scoreboard('football','nfl',checkNow)).length,1);
   assert.equal(new Set(requested).size,4);
   mock([],[]);assert.match((await nbaStatus(checkNow)).message,/didn’t play yesterday/);
-  mock([final],[ft(1),ft(2)]);let result=await nbaStatus(checkNow);assert.equal(result.status,'ACTIVE');assert.equal(result.message,'Two misses, free chicken! 🎉');
+  mock([final],[ft(1),ft(2)]);let result=await nbaStatus(checkNow);assert.equal(result.status,'ACTIVE');assert.match(result.message,/Two misses, free chicken! 🎉.*Claim before 10:30 a.m. CT Oct 23.*Redeem from 10:30 a.m. to 9 p.m./);
+  result=await nbaStatus(new Date('2026-10-23T15:29:59Z'));assert.equal(result.status,'ACTIVE');assert.match(result.cardClaim,/Open the Chick-fil-A app before 10:30/);
+  result=await nbaStatus(new Date('2026-10-23T15:30:00Z'));assert.equal(result.status,'ACTIVE');assert.match(result.message,/Already claimed.*New claims are closed/);assert.doesNotMatch(result.cardClaim,/Open the Chick-fil-A app/);
+  result=await nbaStatus(new Date('2026-10-24T01:59:59Z'));assert.equal(result.status,'ACTIVE');assert.match(result.message,/Already claimed/);
+  result=await nbaStatus(new Date('2026-10-24T02:00:00Z'));assert.equal(result.status,'NOT ACTIVE');assert.equal(result.cardClaim,undefined);
+  mock([{...final,date:'2026-11-06T02:00:00Z'}],[ft(1),ft(2)]);result=await nbaStatus(new Date('2026-11-06T15:29:59Z'));assert.match(result.message,/Claim before/); // Still daylight time before the November 8 transition.
+  mock([{...final,date:'2026-11-10T02:00:00Z'}],[ft(1),ft(2)]);result=await nbaStatus(new Date('2026-11-10T16:29:59Z'));assert.match(result.message,/Claim before/);
+  result=await nbaStatus(new Date('2026-11-10T16:30:00Z'));assert.match(result.message,/New claims are closed/); // Central standard time.
+  mock([{...final,date:'2027-03-14T02:00:00Z'}],[ft(1),ft(2)]);result=await nbaStatus(new Date('2027-03-14T05:30:00Z'));assert.equal(result.status,'ACTIVE TOMORROW');assert.match(result.cardClaim,/CT Mar 14/); // Calendar day survives spring-forward.
+  mock([final],[ft(1),ft(2)]);result=await nbaStatus(checkNow);
   assert.match(result.gameCheck.detail,/October 22, 2026.*Home.*Final/); // Date must be Central, not UTC.
   const namedAway={...final,competitions:[{competitors:[{team:{id:'16'},homeAway:'away'},{team:{id:'20',displayName:'Denver Nuggets'},homeAway:'home'}]}]};
   mock([namedAway],[ft(1),ft(2)]);result=await nbaStatus(checkNow);assert.match(result.gameCheck.detail,/Timberwolves at Denver Nuggets.*Away.*Final/);

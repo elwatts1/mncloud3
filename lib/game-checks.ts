@@ -69,10 +69,15 @@ export async function nbaStatus(now:Date){
  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'}).formatToParts(now);
  const val=(t:string)=>parts.find(p=>p.type===t)?.value;
  const mins=Number(val('hour'))*60+Number(val('minute'));
+ const claimDay=new Date(Date.parse(day(now)+'T12:00:00Z')+(status==='ACTIVE TOMORROW'?86400000:0)).toISOString().slice(0,10);
+ const claimDate=new Intl.DateTimeFormat('en-US',{timeZone:'UTC',month:'short',day:'numeric'}).format(new Date(claimDay+'T12:00:00Z'));
+ let cardClaim:string|undefined;
  if(status==='ACTIVE'&&val('weekday')==='Sun'){status='NOT ACTIVE';uncertain=true;message='Sunday redemption isn’t confirmed.';}
  else if(status==='ACTIVE'&&mins>=1260){status='NOT ACTIVE';message='Today’s deal ended at 9 p.m.';}
- else if(status==='ACTIVE'&&mins>=630)message='Two misses, free chicken! 🎉 Already claimed? Redeem by 9 p.m.';
- return {status,message,availabilityUnconfirmed:uncertain&&status==='NOT ACTIVE',gameCheck};
+ else if(status==='ACTIVE'&&mins>=630){message='Free sandwich time! 🎉 Already claimed? Redeem by 9 p.m. CT. New claims are closed.';cardClaim=`Already claimed? Redeem your Original Chicken Sandwich by 9 p.m. CT ${claimDate}.`;}
+ else if(status==='ACTIVE'){message=`Two misses, free chicken! 🎉 Claim before 10:30 a.m. CT ${claimDate}. Redeem from 10:30 a.m. to 9 p.m.`;cardClaim=`Open the Chick-fil-A app before 10:30 a.m. CT ${claimDate}; redeem from 10:30 a.m. to 9 p.m.`;}
+ else if(status==='ACTIVE TOMORROW'){message=`Two misses! Free chicken tomorrow! 🎉 Claim before 10:30 a.m. CT ${claimDate}. Redeem tomorrow from 10:30 a.m. to 9 p.m.`;cardClaim=`Open the Chick-fil-A app before 10:30 a.m. CT ${claimDate}; redeem that day from 10:30 a.m. to 9 p.m.`;}
+ return {status,message,availabilityUnconfirmed:uncertain&&status==='NOT ACTIVE',gameCheck,...(cardClaim?{cardClaim}:{})};
 }
 export function footballExplanation(id:string,event:any,now:Date){
  const team=id==='wings'||id==='vcoffee'?'Vikings':'Gophers';
